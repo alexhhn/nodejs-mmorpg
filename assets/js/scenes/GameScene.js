@@ -25,12 +25,14 @@ class GameScene extends Phaser.Scene {
   }
 
   createPlayer(location) {
-    this.player = new Player(this, location[0] * 2, location[1] * 2, 'characters', 0);
+    this.player = new PlayerContainer(this, location[0] * 2, location[1] * 2, 'characters', 0);
   }
 
   createGroups() {
     // create a chest group
     this.chests = this.physics.add.group();
+    // create a monster group
+    this.monsters = this.physics.add.group();
   }
 
   createGameManager() {
@@ -41,6 +43,26 @@ class GameScene extends Phaser.Scene {
 
     this.events.on('chestSpawned', (chest) => {
       this.spawnChest(chest);
+    });
+
+    this.events.on('monsterSpawned', (monster) => {
+      this.spawnMonster(monster);
+    });
+
+    this.events.on('monsterRemoved', (monsterId) => {
+      this.monsters.getChildren().forEach((monster) => {
+        if (monster.id === monsterId) {
+          monster.makeInactive();
+        }
+      });
+    });
+
+    this.events.on('updateMonsterHealth', (monsterId, health) => {
+      this.monsters.getChildren().forEach((monster) => {
+        if (monster.id === monsterId) {
+          monster.updateHealth(health);
+        }
+      });
     });
 
     this.gameManager = new GameManager(this, this.map.map.objects);
@@ -61,15 +83,52 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  spawnMonster(monsterObject) {
+    let monster = this.monsters.getFirstDead();  // declare the mosnter variable only here
+    if (!monster) {
+      monster = new Monster(                     // the const keyword is removed here
+        this,
+        monsterObject.x * 2,
+        monsterObject.y * 2,
+        'monsters',
+        monsterObject.frame,
+        monsterObject.id,
+        monsterObject.health,
+        monsterObject.maxHealth,
+      );
+      // add monster to monsters group
+      this.monsters.add(monster);
+      monster.setCollideWorldBounds(true);
+    } else {
+      monster.id = monsterObject.id;
+      monster.health = monsterObject.health;
+      monster.maxHealth = monsterObject.maxHealth;
+      monster.setTexture('monsters', monsterObject.frame);
+      monster.setPosition(monsterObject.x * 2, monsterObject.y * 2);
+      monster.makeActive();
+    }
+  }
+
   createInput() {
     this.cursors = this.input.keyboard.createCursorKeys();
   }
 
   addCollisions() {
-    // check for collisions between player and the tiled blocked layer
-    this.physics.add.collider(this.player, this.map.blockedLayer);    // New code
+    // check for collisions between the player and the tiled blocked layer
+    this.physics.add.collider(this.player, this.map.blockedLayer);
     // check for overlaps between player and chest game objects
     this.physics.add.overlap(this.player, this.chests, this.collectChest, null, this);
+    // check for collisions between the monster group and the tiled blocked layer
+    this.physics.add.collider(this.monsters, this.map.blockedLayer);
+    // check for overlaps between the player's weapon and monster game objects
+    this.physics.add.overlap(this.player.weapon, this.monsters, this.enemyOverlap, null, this);
+  }
+
+  enemyOverlap(weapon, enemy) {
+    if (this.player.playerAttacking && !this.player.swordHit) {
+      this.player.swordHit = true;
+      this.events.emit('monsterAttacked', enemy.id, this.player.id);
+    }
   }
 
   collectChest(player, chest) {

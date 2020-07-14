@@ -13,7 +13,8 @@ class Spawner {
 
   start() {
     this.interval = setInterval(() => {
-      if (this.objectsCreated < this.limit) {
+      if (this.objectsCreated.length < this.limit) {
+        console.log('this.objectsCreated', this.objectsCreated.length, this.limit)
         this.spawnObject();
       }
     }, this.spawnInterval);
@@ -22,6 +23,8 @@ class Spawner {
   spawnObject() {
     if (this.objectType === SpawnerType.CHEST) {
       this.spawnChest();
+    } else if (this.objectType === SpawnerType.MONSTER) {
+      this.spawnMonster();
     }
   }
 
@@ -30,7 +33,24 @@ class Spawner {
     const chest = new ChestModel(location[0], location[1], randomNumber(10, 20), this.id);
     this.objectsCreated.push(chest);
     this.addObject(chest.id, chest);
-    console.log('chest', chest)
+  }
+
+  spawnMonster() {
+    console.log("spawning monster");
+
+    const location = this.pickRandomLocation();
+    const monster = new MonsterModel(
+      location[0],
+      location[1],
+      randomNumber(10, 20),
+      this.id,
+      randomNumber(0, 20),
+      randomNumber(3, 5),
+      1,
+    );
+    this.objectsCreated.push(monster);
+    console.log('objectsCreated', this.objectsCreated)
+    this.addObject(monster.id, monster);
   }
 
   pickRandomLocation() {
@@ -42,7 +62,10 @@ class Spawner {
       return false;
     });
 
-    if (invalidLocation) return this.pickRandomLocation();
+    if (invalidLocation) {
+      console.log("Invalid location");
+      return this.pickRandomLocation();
+    }
     return location;
   }
 
