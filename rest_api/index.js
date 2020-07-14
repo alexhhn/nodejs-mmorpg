@@ -26,12 +26,13 @@ mongoose.connection.on('error', (error) => {
   console.log(error);
   process.exit(1);
 });
-
+mongoose.set('useFindAndModify', false);
 
 
 const routes = require('./routes/main');
 const passwordRoutes = require('./routes/password');
 const secureRoutes = require('./routes/secure');
+
 
 const app = express();
 const port = process.env.PORT || 3000;
